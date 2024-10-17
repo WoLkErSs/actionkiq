@@ -20,8 +20,13 @@ class Runner
         job = JSON.parse(job_json)
         result = true
         @redis.smembers(TAGS_LOCKED_NAME).each do |s_tag|
+          break unless result
+
           job['tags'].each do |tag|
-            result = false if tag == s_tag
+            if tag == s_tag
+              result = false
+              break
+            end
           end
         end
         result
@@ -38,19 +43,9 @@ class Runner
     end
   end
 
-  def complete_job(job)
-    @redis.srem(TAGS_LOCKED_NAME, *job["tags"])
-  end
-
   def process_job(job)
     puts "Processing job: #{job['id']}"
-    class_const = Object.const_get(job['class'])
-    case job['attributes'].class
-    when Array then class_const.call(*job['attributes'])
-    when Hash then class_const.call(**job['attributes'])
-    else class_const.call
-    end
-
+    sleep(rand(0..3))
     puts "Job completed: #{job['id']}"
   end
 
@@ -60,7 +55,7 @@ class Runner
       if job_data
         job, job_json = job_data[:job], job_data[:job_json]
         process_job(job)
-        complete_job(job)
+        @redis.srem(TAGS_LOCKED_NAME, *job["tags"])
         @redis.lrem('jobs_queue', 0, job_json)
       else
         sleep(1)
