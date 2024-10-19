@@ -1,5 +1,7 @@
 ### Start API
 `rakeup`
+#### Add a new actionkiq task
+`post '/action', { 'tags' => 'any_tag' }`
 
 ### Start ackionkiq
 `ruby index.rb`

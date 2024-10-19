@@ -1,13 +1,14 @@
 class Worker
   TAGS_LOCKED_NAME = 'tags:locked'.freeze
+  MAIN_QUEUE = 'jobs_queue'.freeze
 
-  def self.run(target_tags)
+  def self.run(target_tags=[])
     new(target_tags).exec
   end
 
   def initialize(target_tags=[])
     @target_tags = target_tags
-    @redis = Redis.new
+    @redis = ::Redis.new
   end
 
   def exec
@@ -16,14 +17,14 @@ class Worker
       job, job_json = job_data[:job], job_data[:job_json]
       process_job(job)
       @redis.srem(TAGS_LOCKED_NAME, *job["tags"])
-      @redis.lrem('jobs_queue', 0, job_json)
+      @redis.lrem(MAIN_QUEUE, 0, job_json)
     end
   end
 
   private
 
   def get_next_available_job
-    job_json = @redis.lrange('jobs_queue', 0, -1).find do |job_json|
+    job_json = @redis.lrange(MAIN_QUEUE, 0, -1).find do |job_json|
       job = JSON.parse(job_json)
       next if !@target_tags.empty? && !no_tags_overlapped?(@target_tags, job['tags'])
 
