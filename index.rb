@@ -18,7 +18,7 @@ def worker_thread(id)
     break if Thread.current[:shutdown]
 
     puts "Thread #{id} is working"
-    Worker.run
+    Worker.run(ARGV)
   end
   puts "Thread #{id} has been shut down"
 end

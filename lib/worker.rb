@@ -1,11 +1,12 @@
 class Worker
   TAGS_LOCKED_NAME = 'tags:locked'.freeze
 
-  def self.run
-    new.exec
+  def self.run(target_tags)
+    new(target_tags).exec
   end
 
-  def initialize
+  def initialize(target_tags=[])
+    @target_tags = target_tags
     @redis = Redis.new
   end
 
@@ -24,8 +25,9 @@ class Worker
   def get_next_available_job
     job_json = @redis.lrange('jobs_queue', 0, -1).find do |job_json|
       job = JSON.parse(job_json)
+      next if !@target_tags.empty? && !no_tags_overlapped?(@target_tags, job['tags'])
 
-      tags_free?(job['tags'])
+      no_tags_overlapped?(@redis.smembers(TAGS_LOCKED_NAME), job['tags'])
     end
     return nil unless job_json
 
@@ -34,8 +36,8 @@ class Worker
     { job: job, job_json: job_json }
   end
 
-  def tags_free?(tags)
-    @redis.smembers(TAGS_LOCKED_NAME).each do |s_tag|
+  def no_tags_overlapped?(data_tags, tags)
+    data_tags.each do |s_tag|
       tags.each do |tag|
         return false if tag == s_tag
       end
